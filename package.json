@@ -1,0 +1,25 @@
+{
+  "name": "aws-secrets-manager-rotation-lambdas",
+  "version": "0.1.0",
+  "description": "a collection of aws secrets manager lambda function for db password rotation incl. cloudformation templates",
+  "main": "rotate.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smartinspereira/aws-secrets-manager-rotation-lambdas.git"
+  },
+  "author": "Sergio Martins Pereira <s@x42.io> (https://github.com/smartinspereira)",
+  "license": "MIT License",
+  "bugs": {
+    "url": "https://github.com/smartinspereira/aws-secrets-manager-rotation-lambdas/issues"
+  },
+  "homepage": "https://github.com/smartinspereira/aws-secrets-manager-rotation-lambdas/#readme",
+  "devDependencies": {},
+  "dependencies": {
+    "aws-sdk": "2.413.0",
+    "pg": "7.11.0",
+    "knex": "0.16.5"
+  }
+}
