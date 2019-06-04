@@ -6,7 +6,7 @@ const secretsManager = new aws.SecretsManager()
 
 const log = obj => console.log(JSON.stringify(obj, null, 2))
 
-async function rotateHandler(event) {
+async function rotate(event) {
   log({ log: { event } })
 
   const { SecretId, ClientRequestToken, Step } = event
@@ -213,4 +213,4 @@ async function getSecret(SecretId, stage, ClientRequestToken) {
   return secret
 }
 
-exports.rotateHandler = rotateHandler
+exports.rotateSingleUser = rotate
