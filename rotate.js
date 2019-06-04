@@ -1,9 +1,8 @@
 'use strict'
 
 const aws = require('aws-sdk')
+const pg = require('pg')
 const secretsManager = new aws.SecretsManager()
-
-const knex = require('knex')
 
 const log = obj => console.log(JSON.stringify(obj, null, 2))
 
@@ -96,8 +95,8 @@ async function setSecret(SecretId, ClientRequestToken) {
 
       log({ log: 'setting password' })
 
-      await dbConnection.raw(
-        `alter user ?? with password ?`,
+      await dbConnection.query(
+        'alter user $1 with password $2',
         [pendingSecret.username, pendingSecret.password]
       )
 
@@ -106,7 +105,7 @@ async function setSecret(SecretId, ClientRequestToken) {
     else {
       log({ log: `info: secret ${SecretId} pending is version ${ClientRequestToken}` })
     }
-  } finally { await dbConnection.destroy() }
+  } finally { await dbConnection.end() }
 }
 
 async function testSecret(SecretId, ClientRequestToken) {
@@ -117,8 +116,8 @@ async function testSecret(SecretId, ClientRequestToken) {
   const dbConnection = await getDbConnection(pendingSecret)
 
   if (dbConnection) {
-    try { dbConnection.raw(`select now()`) }
-    finally { dbConnection.destroy() }
+    try { dbConnection.query('select now()') }
+    finally { dbConnection.end() }
 
     log({ log: `info: pendingSecret ${SecretId} test success` })
   } else {
@@ -169,18 +168,16 @@ async function getDbConnection(secretDict) {
   log({ log: 'getDbConnection' })
 
   try {
-    const dbConnection = await knex(
+    const dbConnection = new pg.Client(
       {
-        client: 'pg',
-        connection: {
-          host: secretDict.host,
-          user: secretDict.username,
-          password: secretDict.password,
-          database: secretDict.dbname
-        },
-        pool: { min: 0, max: 1 }
+        host: secretDict.host,
+        user: secretDict.username,
+        password: secretDict.password,
+        database: secretDict.dbname
       }
     )
+
+    await dbConnection.connect()
 
     log({ log: 'dbConnection established' })
 
