@@ -176,8 +176,7 @@ async function getDbConnection(secretDict) {
           user: secretDict.username,
           password: secretDict.password,
           database: secretDict.dbname
-        },
-        pool: { min: 0, max: 4 }
+        }
       }
     )
 
