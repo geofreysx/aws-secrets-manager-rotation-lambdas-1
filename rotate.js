@@ -96,7 +96,7 @@ async function setSecret(SecretId, ClientRequestToken) {
       log({ log: 'setting password' })
 
       await dbConnection.query(
-        'alter user $1 with password $2',
+        'alter user $1::name with password $2::text',
         [pendingSecret.username, pendingSecret.password]
       )
 
