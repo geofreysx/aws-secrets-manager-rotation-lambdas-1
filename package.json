@@ -1,6 +1,6 @@
 {
   "name": "aws-secrets-manager-rotation-lambdas",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "aws secrets manager js lambdas for psql password rotation",
   "main": "main.js",
   "scripts": {
@@ -11,7 +11,7 @@
     "url": "https://github.com/smartinspereira/aws-secrets-manager-rotation-lambdas.git"
   },
   "author": "Sergio Martins Pereira <s@x42.io> (https://github.com/smartinspereira)",
-  "license": "MIT License",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/smartinspereira/aws-secrets-manager-rotation-lambdas/issues"
   },
@@ -19,6 +19,7 @@
   "devDependencies": {},
   "dependencies": {
     "aws-sdk": "2.413.0",
-    "pg": "7.11.0"
+    "pg": "7.11.0",
+    "knex": "0.17.3"
   }
 }

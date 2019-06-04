@@ -1,7 +1,7 @@
 'use strict'
 
 const aws = require('aws-sdk')
-const pg = require('pg')
+const knex = require('knex')
 const secretsManager = new aws.SecretsManager()
 
 const log = obj => console.log(JSON.stringify(obj, null, 2))
@@ -95,8 +95,8 @@ async function setSecret(SecretId, ClientRequestToken) {
 
       log({ log: 'setting password' })
 
-      await dbConnection.query(
-        'alter user $1::name with password $2::text',
+      await dbConnection.raw(
+        'alter user ?? with password ?',
         [pendingSecret.username, pendingSecret.password]
       )
 
@@ -105,7 +105,7 @@ async function setSecret(SecretId, ClientRequestToken) {
     else {
       log({ log: `info: secret ${SecretId} pending is version ${ClientRequestToken}` })
     }
-  } finally { await dbConnection.end() }
+  } finally { await dbConnection.destroy() }
 }
 
 async function testSecret(SecretId, ClientRequestToken) {
@@ -116,8 +116,8 @@ async function testSecret(SecretId, ClientRequestToken) {
   const dbConnection = await getDbConnection(pendingSecret)
 
   if (dbConnection) {
-    try { dbConnection.query('select now()') }
-    finally { dbConnection.end() }
+    try { dbConnection.raw('select now()') }
+    finally { dbConnection.destroy() }
 
     log({ log: `info: pendingSecret ${SecretId} test success` })
   } else {
@@ -168,22 +168,24 @@ async function getDbConnection(secretDict) {
   log({ log: 'getDbConnection' })
 
   try {
-    const dbConnection = new pg.Client(
+    const dbConnection = await knex(
       {
-        host: secretDict.host,
-        user: secretDict.username,
-        password: secretDict.password,
-        database: secretDict.dbname
+        client: 'pg',
+        connection: {
+          host: secretDict.host,
+          user: secretDict.username,
+          password: secretDict.password,
+          database: secretDict.dbname
+        },
+        pool: { min: 0, max: 4 }
       }
     )
-
-    await dbConnection.connect()
 
     log({ log: 'dbConnection established' })
 
     return dbConnection
   } catch (error) {
-    log(error)
+    log({ log: { error: { stack: error.stack, message: error.message } } })
 
     return null
   }
