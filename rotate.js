@@ -7,7 +7,7 @@ const knex = require('knex')
 
 const log = obj => console.log(JSON.stringify(obj, null, 2))
 
-async function handler(event) {
+async function rotateHandler(event) {
   log({ log: { event } })
 
   const { SecretId, ClientRequestToken, Step } = event
@@ -16,14 +16,14 @@ async function handler(event) {
     { SecretId: SecretId }
   ).promise()
   if (!metadata.RotationEnabled)
-    throw new Error(`error::secret ${SecretId} rotation disabled`)
+    throw new Error(`error: secret ${SecretId} rotation disabled`)
 
   const versions = metadata.VersionIdsToStages
   if (!versions[ClientRequestToken])
-    throw new Error(`error::secret ${SecretId} no secret version ${ClientRequestToken}`)
+    throw new Error(`error: secret ${SecretId} no secret version ${ClientRequestToken}`)
 
   if (versions[ClientRequestToken].includes('AWSCURRENT')) {
-    log({ log: `info::secret ${SecretId} current is version ${ClientRequestToken}` })
+    log({ log: `info: secret ${SecretId} current is version ${ClientRequestToken}` })
   } else if (versions[ClientRequestToken].includes('AWSPENDING')) {
     if (Step === 'createSecret')
       await createSecret(SecretId, ClientRequestToken)
@@ -34,10 +34,10 @@ async function handler(event) {
     else if (Step === 'finishSecret')
       await finishSecret(SecretId, ClientRequestToken)
     else {
-      throw new Error(`error::secret ${SecretId} Step ${Step} invalid`)
+      throw new Error(`error: secret ${SecretId} Step ${Step} invalid`)
     }
   } else {
-    throw new Error(`error::secret ${SecretId} pending not version ${ClientRequestToken}`)
+    throw new Error(`error: secret ${SecretId} pending not version ${ClientRequestToken}`)
   }
 }
 
@@ -48,10 +48,9 @@ async function createSecret(SecretId, ClientRequestToken) {
 
   try { await getSecret(SecretId, 'AWSPENDING', ClientRequestToken) }
   catch (error) {
-    // const password = (await secretsManager.getRandomPassword(
-    //   { PasswordLength: 128, ExcludeCharacters: '/"@' }
-    // ).promise()).RandomPassword
-    const password = 'foobar'
+    const password = (await secretsManager.getRandomPassword(
+      { PasswordLength: 128, ExcludeCharacters: '/"@' }
+    ).promise()).RandomPassword
 
     await secretsManager.putSecretValue(
       {
@@ -68,7 +67,7 @@ async function createSecret(SecretId, ClientRequestToken) {
     ).promise()
   }
 
-  log({ log: `info::secret ${SecretId} version ${ClientRequestToken}` })
+  log({ log: `info: secret ${SecretId} version ${ClientRequestToken}` })
 }
 
 async function setSecret(SecretId, ClientRequestToken) {
@@ -77,35 +76,35 @@ async function setSecret(SecretId, ClientRequestToken) {
   let dbConnection = null
   try {
     const pendingSecret = await getSecret(SecretId, 'AWSPENDING', ClientRequestToken)
-    log({ log: 'using::pendingSecret' })
+    log({ log: 'using pendingSecret' })
     dbConnection = await getDbConnection(pendingSecret)
 
     if (!dbConnection) {
       const currentSecret = await getSecret(SecretId, 'AWSCURRENT')
-      log({ log: 'using::currentSecret' })
+      log({ log: 'using currentSecret' })
       dbConnection = await getDbConnection(currentSecret)
 
       if (!dbConnection) {
         const previousDict = await getSecret(SecretId, 'AWSPREVIOUS')
-        log({ log: 'using::previousDict' })
+        log({ log: 'using previousDict' })
         dbConnection = await getDbConnection(previousDict)
 
         if (!dbConnection) {
-          throw new Error(`error::setSecret::secret ${SecretId} is invalid`)
+          throw new Error(`error: setSecret secret ${SecretId} is invalid`)
         }
       }
 
-      log({ log: 'setting::password' })
+      log({ log: 'setting password' })
 
       await dbConnection.raw(
         `alter user ?? with password ?`,
         [pendingSecret.username, pendingSecret.password]
       )
 
-      log({ log: `info::secret ${SecretId} rotated` })
+      log({ log: `info: secret ${SecretId} rotated` })
     }
     else {
-      log({ log: `info::secret ${SecretId} pending is version ${ClientRequestToken}` })
+      log({ log: `info: secret ${SecretId} pending is version ${ClientRequestToken}` })
     }
   } finally { await dbConnection.destroy() }
 }
@@ -113,16 +112,17 @@ async function setSecret(SecretId, ClientRequestToken) {
 async function testSecret(SecretId, ClientRequestToken) {
   log({ log: 'testSecret' })
 
-  const pendingSecret = await getSecret(SecretId, 'AWSPENDING', ClientRequestToken)
+  const pendingSecret =
+    await getSecret(SecretId, 'AWSPENDING', ClientRequestToken)
   const dbConnection = await getDbConnection(pendingSecret)
 
   if (dbConnection) {
     try { dbConnection.raw(`select now()`) }
     finally { dbConnection.destroy() }
 
-    log({ log: `info::pendingSecret ${SecretId} test success` })
+    log({ log: `info: pendingSecret ${SecretId} test success` })
   } else {
-    throw new Error(`error::testSecret::pendingSecret ${SecretId} test fail`)
+    throw new Error(`error: testSecret pendingSecret ${SecretId} test fail`)
   }
 }
 
@@ -134,21 +134,26 @@ async function finishSecret(SecretId, ClientRequestToken) {
   ).promise()
   let currentVersion = null
 
-  console.log(metadata.VersionIdsToStages)
+  log({ log: metadata.VersionIdsToStages })
 
-  for (const [key, value] of Object.entries(metadata.VersionIdsToStages)) {
-    if (value.includes('AWSCURRENT')) {
-      if (key === ClientRequestToken) {
-        log({ log: `info::secret ${SecretId} current is version ${ClientRequestToken}` })
+  for (
+    const [
+      versionId,
+      stages
+    ] of Object.entries(metadata.VersionIdsToStages)
+  ) {
+    if (stages.includes('AWSCURRENT')) {
+      if (versionId === ClientRequestToken) {
+        log({ log: `info: secret ${SecretId} current is version ${ClientRequestToken}` })
         return
       }
 
-      currentVersion = key
+      currentVersion = versionId
       break
     }
   }
 
-  secretsManager.updateSecretVersionStage(
+  await secretsManager.updateSecretVersionStage(
     {
       SecretId: SecretId,
       VersionStage: 'AWSCURRENT',
@@ -157,9 +162,7 @@ async function finishSecret(SecretId, ClientRequestToken) {
     }
   ).promise()
 
-  log(
-    { log: `info::secret ${SecretId} current set version ${currentVersion}` }
-  )
+  log({ log: `info: secret ${SecretId} current set version ${currentVersion}` })
 }
 
 async function getDbConnection(secretDict) {
@@ -203,14 +206,14 @@ async function getSecret(SecretId, stage, ClientRequestToken) {
   )
 
   if (secret.engine !== 'postgres')
-    throw new Error(`error::secret ${SecretId} invalid db engine`)
+    throw new Error(`error: secret ${SecretId} invalid db engine`)
 
   for (const key of ['host', 'username', 'password']) {
     if (!secret[key])
-      throw new Error(`error::secret ${SecretId} missing key ${key}`)
+      throw new Error(`error: secret ${SecretId} missing key ${key}`)
   }
 
   return secret
 }
 
-exports.handler = handler
+exports.rotateHandler = rotateHandler
