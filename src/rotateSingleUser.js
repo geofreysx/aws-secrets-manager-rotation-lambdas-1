@@ -170,6 +170,12 @@ async function finishSecret(SecretId, ClientRequestToken) {
   ).promise()
 
   log({ log: `secret ${SecretId} version ${ClientRequestToken} stage ${AWSCURRENT}` })
+
+  log({
+    log: (await secretsManager.describeSecret(
+      { SecretId: SecretId }
+    ).promise()).VersionIdsToStages
+  })
 }
 
 async function getDbConnection(secretDict) {
