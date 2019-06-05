@@ -1,7 +1,7 @@
 {
   "name": "aws-secrets-manager-rotation-lambdas",
   "version": "0.2.1",
-  "description": "aws secrets manager js lambdas for psql password rotation",
+  "description": "aws secrets manager js lambdas for psql password rotation incl. cloudformation and other snippets",
   "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
