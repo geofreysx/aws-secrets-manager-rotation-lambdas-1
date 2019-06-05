@@ -1,6 +1,6 @@
 {
   "name": "aws-secrets-manager-rotation-lambdas",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "aws secrets manager js lambdas for psql password rotation",
   "main": "main.js",
   "scripts": {
